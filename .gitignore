@@ -71,3 +71,6 @@ Thumbs.db
 
 # Vercel
 .vercel
+
+# Test file to check environment variables - not to be committed
+check-env.js
