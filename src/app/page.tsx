@@ -27,7 +27,7 @@ return () => unsubscribe();
   const handleSignIn = async () => {
     setError("");
 
-    ```
+    
 try {
   const result = await signInWithPopup(auth, googleProvider);
 
