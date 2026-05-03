@@ -19,38 +19,39 @@ export default function LoginPage() {
       }
     });
 
-    ```
-return () => unsubscribe();
-```;
+    return () => unsubscribe();
   }, [router]);
 
   const handleSignIn = async () => {
     setError("");
 
-    
-try {
-  const result = await signInWithPopup(auth, googleProvider);
+    try {
+      const result = await signInWithPopup(auth, googleProvider);
 
-  const idToken = await result.user.getIdToken();
+      const idToken = await result.user.getIdToken();
 
-  const res = await fetch("/api/auth/session", {
-    method: "POST",
-    headers: {
-      "Content-Type": "application/json",
-    },
-    body: JSON.stringify({ idToken }),
-  });
+      const res = await fetch("/api/auth/session", {
+        method: "POST",
+        headers: {
+          "Content-Type": "application/json",
+        },
+        body: JSON.stringify({ idToken }),
+      });
 
-  if (!res.ok) {
-    throw new Error("Failed to create session");
-  }
+      if (!res.ok) {
+        throw new Error("Failed to create session");
+      }
 
-  router.replace("/library");
-} catch (err: any) {
-  console.error("Sign-in error:", err);
-  setError(err.message || "Sign-in failed");
-}
-```;
+      router.replace("/library");
+    } catch (err) {
+      console.error("Sign-in error:", err);
+
+      if (err instanceof Error) {
+        setError(err.message);
+      } else {
+        setError("Sign-in failed");
+      }
+    }
   };
 
   if (loading) {
@@ -71,7 +72,6 @@ try {
         <p className="text-gray-500 mb-6 text-sm">
           Sign in to access your library{" "}
         </p>
-        ```
         {error && <p className="text-red-500 text-sm mb-4">{error}</p>}
         <button
           onClick={handleSignIn}
