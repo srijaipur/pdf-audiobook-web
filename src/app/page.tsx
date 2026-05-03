@@ -11,28 +11,20 @@ export default function LoginPage() {
   const [error, setError] = useState("");
 
   useEffect(() => {
-    // Safety timeout: prevents infinite "Loading..."
-    const timeout = setTimeout(() => {
+  console.log("Firebase auth listener starting...");
+
+  const unsubscribe = onAuthStateChanged(auth, (user) => {
+    console.log("AUTH STATE:", user);
+
+    if (user) {
+      router.replace("/library");
+    } else {
       setLoading(false);
-    }, 3000);
+    }
+  });
 
-    const unsubscribe = onAuthStateChanged(auth, (user) => {
-      clearTimeout(timeout);
-
-      console.log("AUTH STATE:", user);
-
-      if (user) {
-        router.replace("/library");
-      } else {
-        setLoading(false);
-      }
-    });
-
-    return () => {
-      clearTimeout(timeout);
-      unsubscribe();
-    };
-  }, [router]);
+  return () => unsubscribe();
+}, [router]);
 
   const handleSignIn = async () => {
     setError("");
