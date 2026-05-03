@@ -11,7 +11,16 @@ export default function LoginPage() {
   const [error, setError] = useState("");
 
   useEffect(() => {
+    // Safety timeout: prevents infinite "Loading..."
+    const timeout = setTimeout(() => {
+      setLoading(false);
+    }, 3000);
+
     const unsubscribe = onAuthStateChanged(auth, (user) => {
+      clearTimeout(timeout);
+
+      console.log("AUTH STATE:", user);
+
       if (user) {
         router.replace("/library");
       } else {
@@ -19,7 +28,10 @@ export default function LoginPage() {
       }
     });
 
-    return () => unsubscribe();
+    return () => {
+      clearTimeout(timeout);
+      unsubscribe();
+    };
   }, [router]);
 
   const handleSignIn = async () => {
@@ -57,22 +69,24 @@ export default function LoginPage() {
   if (loading) {
     return (
       <main className="flex min-h-screen items-center justify-center">
-        {" "}
-        <p className="text-gray-500">Loading...</p>{" "}
+        <p className="text-gray-500">Loading...</p>
       </main>
     );
   }
 
   return (
     <main className="flex min-h-screen items-center justify-center bg-gray-50">
-      {" "}
       <div className="rounded-xl bg-white p-10 shadow-md text-center w-80">
-        {" "}
-        <h1 className="text-2xl font-bold mb-2">PDF Audiobook</h1>{" "}
+        <h1 className="text-2xl font-bold mb-2">PDF Audiobook</h1>
+
         <p className="text-gray-500 mb-6 text-sm">
-          Sign in to access your library{" "}
+          Sign in to access your library
         </p>
-        {error && <p className="text-red-500 text-sm mb-4">{error}</p>}
+
+        {error && (
+          <p className="text-red-500 text-sm mb-4">{error}</p>
+        )}
+
         <button
           onClick={handleSignIn}
           className="w-full bg-blue-600 text-white rounded-lg py-2 px-4 hover:bg-blue-700 transition"
