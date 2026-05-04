@@ -1,6 +1,7 @@
 import { initializeApp, getApps, getApp } from "firebase/app";
 import { getAuth, GoogleAuthProvider } from "firebase/auth";
 import { getFirestore } from "firebase/firestore";
+import { getStorage } from "firebase/storage";
 
 const firebaseConfig = {
   apiKey: process.env.NEXT_PUBLIC_FIREBASE_API_KEY!,
@@ -11,7 +12,7 @@ const firebaseConfig = {
   appId: process.env.NEXT_PUBLIC_FIREBASE_APP_ID!,
 };
 
-// 🔴 HARD FAIL if env vars are missing (VERY IMPORTANT for debugging)
+// HARD FAIL if env vars are missing
 if (!firebaseConfig.apiKey || !firebaseConfig.authDomain) {
   throw new Error("Firebase environment variables are missing");
 }
@@ -20,4 +21,5 @@ const app = getApps().length ? getApp() : initializeApp(firebaseConfig);
 
 export const auth = getAuth(app);
 export const db = getFirestore(app);
+export const storage = getStorage(app); // ⭐ FIX ADDED HERE
 export const googleProvider = new GoogleAuthProvider();
