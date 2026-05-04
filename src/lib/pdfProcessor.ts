@@ -1,10 +1,14 @@
-import pdf from "pdf-parse";
+import * as pdfParse from "pdf-parse";
+
 
 export async function extractTextFromPDF(file: File): Promise<string> {
   const arrayBuffer = await file.arrayBuffer();
   const buffer = Buffer.from(arrayBuffer);
 
-  const data = await pdf(buffer);
+  // ✅ dynamic import for CommonJS compatibility (Vercel-safe)
+  const pdfParse = (await import("pdf-parse")).default;
 
-  return data.text;
+  const data = await pdfParse(buffer);
+
+  return data.text || "";
 }
