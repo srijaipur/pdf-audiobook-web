@@ -46,15 +46,15 @@ export default function UploadPDF() {
       setText(extractedText);
 
       // Save metadata
-     await setDoc(doc(db, "audiobooks", `${Date.now()}`), {
+    await setDoc(doc(db, "audiobooks", `${Date.now()}`), {
   title: file.name,
   pdfUrl: url,
   owner: auth.currentUser.uid,
 
-  // ✅ REQUIRED FOR PLAYER
+  // ✅ FULL TEXT (CRITICAL FOR PLAYER)
   fullText: extractedText,
 
-  // UI only
+  // fallback preview (still useful for UI)
   textPreview: extractedText.slice(0, 500),
 
   createdAt: new Date(),

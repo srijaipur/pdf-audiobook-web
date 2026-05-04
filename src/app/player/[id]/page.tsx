@@ -31,7 +31,7 @@ export default function PlayerPage() {
       console.log("🔥 FIRESTORE DATA:", data);
 
       // ✅ BEST PRACTICE: ONLY fullText allowed
-      const text = data.fullText;
+      const text = data.fullText || data.textPreview;
 
       if (!text) {
         console.error("❌ Missing fullText in Firestore document");
