@@ -1,0 +1,17 @@
+rules_version = '2';
+service cloud.firestore {
+  match /databases/{database}/documents {
+    
+    // All documents in 'audiobooks' collection
+    match /audiobooks/{docId} {
+      
+      // Allow read/write only from emulator or trusted clients
+      allow read, write: if true; // FOR EMULATOR TESTING ONLY
+    }
+
+    // Optional: default deny all other requests
+    match /{document=**} {
+      allow read, write: if false;
+    }
+  }
+}

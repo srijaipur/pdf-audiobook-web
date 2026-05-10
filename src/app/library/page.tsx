@@ -17,21 +17,33 @@ export default function LibraryPage() {
   const [isAdmin, setIsAdmin] = useState(false);
 
   // -----------------------------
-  // FETCH USER + ADMIN CHECK
+  // STATUS LABELS
+  // -----------------------------
+  const statusMap: Record<string, string> = {
+    pending_approval: "⏳ Waiting for approval",
+    approved: "✅ Approved (queued)",
+    processing: "🎧 Generating audio",
+    ready: "🎵 Ready to play",
+  };
+
+  // -----------------------------
+  // FETCH USER ROLE
   // -----------------------------
   useEffect(() => {
-    const fetchUserRole = async () => {
-      if (!auth.currentUser) return;
+  const unsubscribe = auth.onAuthStateChanged(async (user) => {
+    if (!user) return;
 
-      const userSnap = await getDoc(
-        doc(db, "users", auth.currentUser.uid)
-      );
+    const userSnap = await getDoc(doc(db, "users", user.uid));
 
-      setIsAdmin(userSnap.data()?.isAdmin || false);
-    };
+    console.log("USER:", user.email);
+    console.log("DOC:", userSnap.data());
 
-    fetchUserRole();
-  }, []);
+    // ✅ keep this line
+    setIsAdmin(userSnap.data()?.isAdmin || false);
+  });
+
+  return () => unsubscribe();
+}, []);
 
   // -----------------------------
   // FETCH AUDIOBOOKS
@@ -58,10 +70,15 @@ export default function LibraryPage() {
     if (!auth.currentUser) return;
 
     const userSnap = await getDoc(
-      doc(db, "users", auth.currentUser.uid)
-    );
+  doc(db, "users", auth.currentUser.uid)
+);
 
-    const admin = userSnap.data()?.isAdmin;
+console.log("UID:", auth.currentUser.uid);
+console.log("USER DOC:", userSnap.data());
+
+const admin = userSnap.data()?.isAdmin;
+
+console.log("IS ADMIN:", admin);
 
     if (!admin) {
       alert("Not authorized");
@@ -76,47 +93,66 @@ export default function LibraryPage() {
   };
 
   return (
-    <div className="p-6">
+    <div className="min-h-screen bg-gray-50 px-4 py-6">
       {/* HEADER */}
-      <h1 className="text-xl font-bold mb-4">Library</h1>
+      <div className="text-center mb-6">
+        <h1 className="text-2xl font-bold">Library</h1>
+        <p className="text-sm text-gray-500">
+          Your uploaded and generated audiobooks
+        </p>
+      </div>
 
-      {/* UPLOAD SECTION */}
+      {/* UPLOAD */}
       <UploadPDF />
 
       {/* LIST */}
-      <div className="mt-6 space-y-3">
+      <div className="mt-8 max-w-3xl mx-auto space-y-4">
         {books.length === 0 && (
-          <p className="text-gray-500">No audiobooks found.</p>
+          <p className="text-center text-gray-500">
+            No audiobooks found.
+          </p>
         )}
 
         {books.map((book) => (
           <div
             key={book.id}
-            className="border p-3 rounded flex justify-between items-center"
+            className="bg-white border rounded-lg p-4 shadow-sm flex flex-col sm:flex-row sm:items-center sm:justify-between gap-4"
           >
-            {/* TITLE */}
+            {/* LEFT */}
             <div>
-              <h2 className="font-semibold">{book.title}</h2>
-              <p className="text-sm text-gray-500">
-                {book.textPreview?.slice(0, 80)}
+              {/* ✅ SHOW ACTUAL FILE NAME */}
+              <h2 className="font-semibold text-lg">
+                {book.fileName || "Untitled"}
+              </h2>
+
+              <p className="text-sm text-gray-500 mt-1">
+                {statusMap[book.status] || book.status}
               </p>
+
+              {book.textPreview && (
+                <p className="text-sm text-gray-400 mt-2">
+                  {book.textPreview.slice(0, 100)}...
+                </p>
+              )}
             </div>
 
             {/* ACTIONS */}
-            <div className="space-x-2">
+            <div className="flex gap-2 flex-wrap">
               {/* PLAY */}
-              <Link
-                href={`/player/${book.id}`}
-                className="px-3 py-1 bg-green-600 text-white rounded"
-              >
-                ▶ Play
-              </Link>
+              {book.audioUrl && (
+                <Link
+                  href={`/player/${book.id}`}
+                  className="px-3 py-1 bg-green-600 text-white rounded hover:bg-green-700"
+                >
+                  ▶ Play
+                </Link>
+              )}
 
               {/* DELETE (ADMIN ONLY) */}
               {isAdmin && (
                 <button
                   onClick={() => handleDelete(book.id)}
-                  className="px-3 py-1 bg-red-600 text-white rounded"
+                  className="px-3 py-1 bg-red-600 text-white rounded hover:bg-red-700"
                 >
                   🗑 Delete
                 </button>

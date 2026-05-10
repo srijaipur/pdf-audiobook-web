@@ -14,13 +14,23 @@ export async function uploadToR2(
   buffer: Buffer,
   contentType: string
 ): Promise<string> {
-  await r2.send(
-    new PutObjectCommand({
-      Bucket: process.env.R2_BUCKET_NAME!,
-      Key: key,
-      Body: buffer,
-      ContentType: contentType,
-    })
-  );
-  return `${process.env.NEXT_PUBLIC_R2_PUBLIC_URL}/${key}`;
+  console.log("🚀 R2 Upload START:", { key, contentType });
+
+  try {
+    const result = await r2.send(
+      new PutObjectCommand({
+        Bucket: process.env.R2_BUCKET_NAME!,
+        Key: key,
+        Body: buffer,
+        ContentType: contentType,
+      })
+    );
+
+    console.log("✅ R2 Upload SUCCESS:", { key, result });
+
+    return `${process.env.NEXT_PUBLIC_R2_PUBLIC_URL}/${key}`;
+  } catch (error) {
+    console.error("❌ R2 Upload FAILED:", error);
+    throw error;
+  }
 }
