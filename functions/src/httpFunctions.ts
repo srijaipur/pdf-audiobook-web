@@ -1,42 +1,149 @@
-import { onRequest } from "firebase-functions/v2/https";
 import * as admin from "firebase-admin";
+import * as functions from "firebase-functions";
 
-admin.initializeApp();
+import { FieldValue } from "firebase-admin/firestore";
+
+/**
+ * -------------------------------------------------------
+ * Firebase Admin Initialization
+ * -------------------------------------------------------
+ * Prevent duplicate initialization during emulator reloads
+ * -------------------------------------------------------
+ */
+if (!admin.apps.length) {
+  admin.initializeApp();
+}
+
 const db = admin.firestore();
 
-export const requestUpload = onRequest(async (req, res) => {
-  res.set("Access-Control-Allow-Origin", "*");
-  res.set("Access-Control-Allow-Methods", "POST, OPTIONS");
-  res.set("Access-Control-Allow-Headers", "Content-Type");
+/**
+ * -------------------------------------------------------
+ * requestUpload
+ * -------------------------------------------------------
+ * Receives upload metadata from frontend.
+ * Creates audiobook document in Firestore.
+ * -------------------------------------------------------
+ */
+export const requestUpload = functions.https.onRequest(
+  async (req, res) => {
+    /**
+     * ---------------------------------------------------
+     * CORS
+     * ---------------------------------------------------
+     */
+    res.set("Access-Control-Allow-Origin", "*");
+    res.set(
+      "Access-Control-Allow-Methods",
+      "POST, OPTIONS"
+    );
 
-  if (req.method === "OPTIONS") {
-    res.status(204).send("");
-    return;
-  }
+    res.set(
+      "Access-Control-Allow-Headers",
+      "Content-Type"
+    );
 
-  try {
-    if (req.method !== "POST") {
-      res.status(405).send("Method Not Allowed");
+    /**
+     * ---------------------------------------------------
+     * Handle preflight
+     * ---------------------------------------------------
+     */
+    if (req.method === "OPTIONS") {
+      res.status(204).send("");
       return;
     }
 
-    const { fileName, fileUrl, userId } = req.body;
-    if (!fileName || !fileUrl || !userId) {
-      res.status(400).json({ error: "Missing fields" });
-      return;
+    try {
+      /**
+       * -------------------------------------------------
+       * Allow POST only
+       * -------------------------------------------------
+       */
+      if (req.method !== "POST") {
+        res.status(405).json({
+          error: "Method Not Allowed",
+        });
+
+        return;
+      }
+
+      /**
+       * -------------------------------------------------
+       * Safe body parsing
+       * -------------------------------------------------
+       */
+      const body =
+        typeof req.body === "string"
+          ? JSON.parse(req.body)
+          : req.body;
+
+      const {
+        fileName,
+        fileUrl,
+        userId,
+        userEmail,
+      } = body;
+
+      /**
+       * -------------------------------------------------
+       * Validation
+       * -------------------------------------------------
+       */
+      if (!fileName || !fileUrl || !userId) {
+        res.status(400).json({
+          error: "Missing required fields",
+        });
+
+        return;
+      }
+
+      /**
+       * -------------------------------------------------
+       * Firestore Write
+       * -------------------------------------------------
+       */
+      const docRef = await db
+        .collection("audiobooks")
+        .add({
+          fileName,
+          fileUrl,
+          userId,
+
+          userEmail: userEmail || null,
+
+          status: "pending_approval",
+
+          createdAt:
+            FieldValue.serverTimestamp(),
+
+          updatedAt:
+            FieldValue.serverTimestamp(),
+        });
+
+      console.log(
+        "✅ Upload request created:",
+        docRef.id
+      );
+
+      /**
+       * -------------------------------------------------
+       * Success response
+       * -------------------------------------------------
+       */
+      res.status(200).json({
+        success: true,
+        bookId: docRef.id,
+      });
+    } catch (err: any) {
+      console.error(
+        "❌ requestUpload ERROR:",
+        err
+      );
+
+      res.status(500).json({
+        error:
+          err?.message ||
+          "Internal Server Error",
+      });
     }
-
-    const docRef = await db.collection("audiobooks").add({
-      fileName,
-      fileUrl,
-      userId,
-      status: "pending_approval",
-      createdAt: new Date(),
-    });
-
-    res.json({ success: true, requestId: docRef.id });
-  } catch (err: any) {
-    console.error("UPLOAD ERROR:", err);
-    res.status(500).json({ error: err.message });
   }
-});
+);

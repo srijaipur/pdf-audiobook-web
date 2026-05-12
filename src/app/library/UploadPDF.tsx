@@ -1,14 +1,51 @@
 "use client";
 
 import { useState } from "react";
-import { getStorage, ref, uploadBytes, getDownloadURL } from "firebase/storage";
+import {
+  getStorage,
+  ref,
+  uploadBytes,
+  getDownloadURL,
+} from "firebase/storage";
+
 import { auth } from "@/lib/firebase";
 
-export default function UploadPDF() {
-  const [file, setFile] = useState<File | null>(null);
-  const [loading, setLoading] = useState(false);
-  const [status, setStatus] = useState("");
+import { submitUploadRequest } from "@/services/upload.service";
 
+/**
+ * =========================================================
+ * UploadPDF
+ * =========================================================
+ * Thin UI layer.
+ *
+ * Responsibilities:
+ * - file selection
+ * - upload progress
+ * - user feedback
+ *
+ * NON-responsibilities:
+ * - backend URL logic
+ * - fetch logic
+ * - environment logic
+ * - API routing
+ * =========================================================
+ */
+
+export default function UploadPDF() {
+  const [file, setFile] =
+    useState<File | null>(null);
+
+  const [loading, setLoading] =
+    useState(false);
+
+  const [status, setStatus] =
+    useState("");
+
+  /**
+   * -------------------------------------------------------
+   * Handle upload flow
+   * -------------------------------------------------------
+   */
   const handleUpload = async () => {
     if (!file) {
       alert("Please select a PDF file");
@@ -17,52 +54,85 @@ export default function UploadPDF() {
 
     try {
       setLoading(true);
-      setStatus("Uploading to storage...");
+
+      /**
+       * ---------------------------------------------------
+       * Upload to Firebase Storage
+       * ---------------------------------------------------
+       */
+      setStatus("Uploading PDF...");
 
       const storage = getStorage();
-      const fileRef = ref(storage, `uploads/${Date.now()}-${file.name}`);
 
-      // Upload file
-      await uploadBytes(fileRef, file);
-
-      // Get URL
-      const fileUrl = await getDownloadURL(fileRef);
-
-      setStatus("Submitting for approval...");
-
-      // Call Cloud Function
-      const res = await fetch(
-        "https://us-central1-pdf-audiobook-web-v2.cloudfunctions.net/requestUpload",
-        {
-          method: "POST",
-          headers: {
-            "Content-Type": "application/json",
-          },
-          body: JSON.stringify({
-  fileName: file.name,
-  fileUrl,
-  userId: auth.currentUser?.uid || "anonymous",
-  userEmail: auth.currentUser?.email || "unknown",
-}),
-        }
+      const fileRef = ref(
+        storage,
+        `uploads/${Date.now()}-${file.name}`
       );
 
-      const data = await res.json();
+      await uploadBytes(fileRef, file);
 
-      if (!res.ok) {
-        throw new Error(data.error || "Request failed");
-      }
+      /**
+       * ---------------------------------------------------
+       * Resolve download URL
+       * ---------------------------------------------------
+       */
+      const fileUrl =
+        await getDownloadURL(fileRef);
 
-      setStatus("✅ Submitted! Awaiting admin approval.");
+      /**
+       * ---------------------------------------------------
+       * Submit backend processing request
+       * ---------------------------------------------------
+       */
+      setStatus(
+        "Submitting audiobook request..."
+      );
+
+      const result =
+        await submitUploadRequest({
+          fileName: file.name,
+          fileUrl,
+
+          userId:
+            auth.currentUser?.uid ||
+            "anonymous",
+
+          userEmail:
+            auth.currentUser?.email ||
+            "unknown",
+        });
+
+      console.log(
+        "✅ Upload request result:",
+        result
+      );
+
+      /**
+       * ---------------------------------------------------
+       * Success UI
+       * ---------------------------------------------------
+       */
+      setStatus(
+        "✅ Submitted successfully!"
+      );
+
       setFile(null);
     } catch (err: any) {
       console.error(err);
-      setStatus(`❌ ${err.message}`);
+
+      setStatus(
+        `❌ ${err.message}`
+      );
     } finally {
       setLoading(false);
     }
   };
 
+  /**
+   * =======================================================
+   * UI
+   * =======================================================
+   */
   return (
     <div className="max-w-md mx-auto p-6 border rounded-xl shadow-sm bg-white">
       <h2 className="text-xl font-semibold mb-2 text-center">
@@ -78,7 +148,9 @@ export default function UploadPDF() {
         accept="application/pdf"
         onChange={(e) => {
           if (e.target.files?.[0]) {
-            setFile(e.target.files[0]);
+            setFile(
+              e.target.files[0]
+            );
           }
         }}
         className="mb-3 w-full"
@@ -86,7 +158,11 @@ export default function UploadPDF() {
 
       {file && (
         <p className="text-sm mb-3">
-          Selected: <strong>{file.name}</strong>
+          Selected:
+          {" "}
+          <strong>
+            {file.name}
+          </strong>
         </p>
       )}
 
@@ -95,11 +171,15 @@ export default function UploadPDF() {
         disabled={loading}
         className="w-full py-2 rounded bg-blue-600 text-white hover:bg-blue-700 disabled:opacity-50"
       >
-        {loading ? "Processing..." : "Upload for Approval"}
+        {loading
+          ? "Processing..."
+          : "Upload for Approval"}
       </button>
 
       {status && (
-        <p className="mt-4 text-sm text-center">{status}</p>
+        <p className="mt-4 text-sm text-center">
+          {status}
+        </p>
       )}
     </div>
   );
