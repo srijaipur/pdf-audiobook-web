@@ -2,7 +2,9 @@
 
 import { useEffect, useState } from "react";
 import Link from "next/link";
+
 import UploadPDF from "./UploadPDF";
+
 import {
   collection,
   getDocs,
@@ -10,11 +12,16 @@ import {
   doc,
   getDoc,
 } from "firebase/firestore";
+
 import { auth, db } from "@/lib/firebase";
+
+import { UserRole } from "@/types/roles";
+import { isAdmin } from "@/lib/rbac";
 
 export default function LibraryPage() {
   const [books, setBooks] = useState<any[]>([]);
-  const [isAdmin, setIsAdmin] = useState(false);
+
+  const [role, setRole] = useState<UserRole | null>(null);
 
   // -----------------------------
   // STATUS LABELS
@@ -24,33 +31,37 @@ export default function LibraryPage() {
     approved: "✅ Approved (queued)",
     processing: "🎧 Generating audio",
     ready: "🎵 Ready to play",
+    completed: "🎵 Ready to play",
   };
 
   // -----------------------------
   // FETCH USER ROLE
   // -----------------------------
   useEffect(() => {
-  const unsubscribe = auth.onAuthStateChanged(async (user) => {
-    if (!user) return;
+    const unsubscribe = auth.onAuthStateChanged(async (user) => {
+      if (!user) return;
 
-    const userSnap = await getDoc(doc(db, "users", user.uid));
+      const userSnap = await getDoc(
+        doc(db, "users", user.uid)
+      );
 
-    console.log("USER:", user.email);
-    console.log("DOC:", userSnap.data());
+      setRole(
+        (userSnap.data()?.role as UserRole) ||
+          "basicUser"
+      );
+    });
 
-    // ✅ keep this line
-    setIsAdmin(userSnap.data()?.isAdmin || false);
-  });
-
-  return () => unsubscribe();
-}, []);
+    return () => unsubscribe();
+  }, []);
 
   // -----------------------------
   // FETCH AUDIOBOOKS
   // -----------------------------
   useEffect(() => {
     const fetchBooks = async () => {
-      const snap = await getDocs(collection(db, "audiobooks"));
+      const snap = await getDocs(
+        collection(db, "audiobooks")
+      );
 
       const data = snap.docs.map((d) => ({
         id: d.id,
@@ -70,24 +81,21 @@ export default function LibraryPage() {
     if (!auth.currentUser) return;
 
     const userSnap = await getDoc(
-  doc(db, "users", auth.currentUser.uid)
-);
+      doc(db, "users", auth.currentUser.uid)
+    );
 
-console.log("UID:", auth.currentUser.uid);
-console.log("USER DOC:", userSnap.data());
+    const role = userSnap.data()?.role as UserRole;
 
-const admin = userSnap.data()?.isAdmin;
-
-console.log("IS ADMIN:", admin);
-
-    if (!admin) {
+    if (!isAdmin(role)) {
       alert("Not authorized");
       return;
     }
 
     await deleteDoc(doc(db, "audiobooks", bookId));
 
-    setBooks((prev) => prev.filter((b) => b.id !== bookId));
+    setBooks((prev) =>
+      prev.filter((b) => b.id !== bookId)
+    );
 
     alert("Deleted successfully");
   };
@@ -96,7 +104,10 @@ console.log("IS ADMIN:", admin);
     <div className="min-h-screen bg-gray-50 px-4 py-6">
       {/* HEADER */}
       <div className="text-center mb-6">
-        <h1 className="text-2xl font-bold">Library</h1>
+        <h1 className="text-2xl font-bold">
+          Library
+        </h1>
+
         <p className="text-sm text-gray-500">
           Your uploaded and generated audiobooks
         </p>
@@ -120,18 +131,19 @@ console.log("IS ADMIN:", admin);
           >
             {/* LEFT */}
             <div>
-              {/* ✅ SHOW ACTUAL FILE NAME */}
               <h2 className="font-semibold text-lg">
                 {book.fileName || "Untitled"}
               </h2>
 
               <p className="text-sm text-gray-500 mt-1">
-                {statusMap[book.status] || book.status}
+                {statusMap[book.status] ||
+                  book.status}
               </p>
 
               {book.textPreview && (
                 <p className="text-sm text-gray-400 mt-2">
-                  {book.textPreview.slice(0, 100)}...
+                  {book.textPreview.slice(0, 100)}
+                  ...
                 </p>
               )}
             </div>
@@ -139,7 +151,7 @@ console.log("IS ADMIN:", admin);
             {/* ACTIONS */}
             <div className="flex gap-2 flex-wrap">
               {/* PLAY */}
-              {book.audioUrl && (
+              {book.finalAudioUrl && (
                 <Link
                   href={`/player/${book.id}`}
                   className="px-3 py-1 bg-green-600 text-white rounded hover:bg-green-700"
@@ -148,10 +160,12 @@ console.log("IS ADMIN:", admin);
                 </Link>
               )}
 
-              {/* DELETE (ADMIN ONLY) */}
-              {isAdmin && (
+              {/* DELETE */}
+              {isAdmin(role || undefined) && (
                 <button
-                  onClick={() => handleDelete(book.id)}
+                  onClick={() =>
+                    handleDelete(book.id)
+                  }
                   className="px-3 py-1 bg-red-600 text-white rounded hover:bg-red-700"
                 >
                   🗑 Delete

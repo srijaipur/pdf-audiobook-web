@@ -12,14 +12,20 @@ export async function POST(request: NextRequest) {
     const userSnap = await userRef.get();
 
     if (!userSnap.exists) {
-      await userRef.set({
-        uid,
-        email,
-        displayName: name ?? "",
-        isAdmin: false,
-        createdAt: new Date().toISOString(),
-      });
-    }
+  await userRef.set({
+    uid,
+    email,
+    displayName: name ?? "",
+
+    role: "basicUser",
+
+    useNeuralTTS: false,
+
+    createdAt: new Date().toISOString(),
+
+    createdBy: "system",
+  });
+}
 
     const response = NextResponse.json({ success: true });
 
